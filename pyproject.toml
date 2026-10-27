@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hook-contract"
+version = "0.1.0"
+description = "Webhook consumer conformance tests with durable-state evidence"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{name = "AntJun"}]
+dependencies = []
+classifiers = ["Programming Language :: Python :: 3", "Topic :: Software Development :: Testing"]
+
+[project.scripts]
+hookcontract = "hookcontract.__main__:main"
+
+[project.urls]
+Repository = "https://github.com/AntJun/hook-contract"
+Issues = "https://github.com/AntJun/hook-contract/issues"
+
+[tool.setuptools.packages.find]
+include = ["hookcontract*"]
