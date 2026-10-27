@@ -172,6 +172,7 @@ class HTTPClient:
         connection = http.client.HTTPConnection(self.host, self.port, timeout=self.timeout)
         started = time.perf_counter()
         timer = None
+        expired = threading.Event()
         try:
             connection.connect()
             remaining = self.timeout - (time.perf_counter() - started)
@@ -180,6 +181,7 @@ class HTTPClient:
             connected_socket = connection.sock
 
             def expire():
+                expired.set()
                 try:
                     connected_socket.shutdown(socket.SHUT_RDWR)
                 except OSError:
@@ -190,7 +192,12 @@ class HTTPClient:
             timer.start()
             connection.request(method, path, body=body, headers=headers)
             response = connection.getresponse()
+            expected_length = response.length
             payload = response.read(MAX_BODY + 1)
+            if expired.is_set() or time.perf_counter() - started > self.timeout:
+                raise TimeoutError()
+            if expected_length is not None and len(payload) != expected_length:
+                raise http.client.IncompleteRead(payload)
             if len(payload) > MAX_BODY:
                 raise EvidenceError("response exceeds the fixture limit")
             return Reply(response.status, (time.perf_counter() - started) * 1000,

@@ -83,6 +83,26 @@ class IntegrationTests(unittest.TestCase):
             server.server_close()
             worker.join()
 
+    def test_truncated_response_cannot_count_as_acknowledged(self):
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                self.send_response(200)
+                self.send_header("Content-Length", "10")
+                self.end_headers()
+                self.wfile.write(b"x")
+            def log_message(self, *_):
+                pass
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            client = HTTPClient(f"http://127.0.0.1:{server.server_port}", KEY)
+            self.assertIsNone(client.send(Event("a", "s", 1, 1)).status)
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join()
+
     def test_whole_request_deadline_interrupts_a_trickling_body(self):
         release = threading.Event()
         class Handler(BaseHTTPRequestHandler):
