@@ -11,7 +11,7 @@ from hookcontract.__main__ import load_factory, main
 from hookcontract.core import Event, EvidenceError, HTTPClient, Reply, Snapshot, deliver
 from hookcontract.reference import ManagedTarget
 from hookcontract.report import render_html, render_junit
-from hookcontract.suite import Case, Violation, run_suite, same_version_race
+from hookcontract.suite import Case, Violation, global_id_conflict, run_suite, same_version_race
 
 KEY = bytes(range(32))
 
@@ -22,8 +22,8 @@ class IntegrationTests(unittest.TestCase):
             report = run_suite(target)
             key_hex = target.key.hex()
         self.assertEqual(report["exit_code"], 0)
-        self.assertEqual(report["summary"], {"pass": 21, "fail": 0, "error": 0})
-        self.assertEqual(sum(r["confirmed_restarts"] for r in report["results"]), 4)
+        self.assertEqual(report["summary"], {"pass": 22, "fail": 0, "error": 0})
+        self.assertEqual(sum(r["confirmed_restarts"] for r in report["results"]), 5)
         text = json.dumps(report)
         self.assertFalse(key_hex in text, "authentication material appeared in a report")
         self.assertNotIn("127.0.0.1", text)
@@ -87,6 +87,15 @@ class IntegrationTests(unittest.TestCase):
         with self.assertRaises(EvidenceError):
             case.observe("s")
         self.assertEqual(case.observations, [])
+
+    def test_stream_scoped_identity_adapter_cannot_pass_global_case(self):
+        class Scoped:
+            def send(self, *_args, **_kwargs):
+                return Reply(200)
+            def restart(self, **_kwargs):
+                return True
+        with self.assertRaises(Violation):
+            global_id_conflict(Case(Scoped()))
 
     def test_race_observation_must_match_acknowledged_winner(self):
         class Misrouted:
@@ -189,7 +198,7 @@ class OutputTests(unittest.TestCase):
         suite = ET.fromstring(render_junit(report))
         self.assertEqual(int(suite.attrib["errors"]), report["summary"]["error"])
         self.assertEqual(int(suite.attrib["failures"]), report["summary"]["fail"])
-        self.assertEqual(len(suite), 21)
+        self.assertEqual(len(suite), 22)
 
     def test_invalid_adapter_returns_generic_incomplete_error(self):
         output = io.StringIO()

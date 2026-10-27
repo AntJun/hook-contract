@@ -59,6 +59,8 @@ authentication is regenerated per attempt.
 Backoff begins at 0.01 seconds and is capped at 0.1 seconds.
 Retry-After supports nonnegative integer seconds and timezone-aware HTTP dates.
 The total scheduled delay budget is one second, with a ten-second elapsed budget.
+The remaining elapsed budget is checked before every request and backoff, passed
+to the transport, and checked after waiting.
 The built-in HTTP client's default whole-request deadline is two seconds.
 Fixture inputs and responses are bounded to 64 KiB. Policy limits are explicit.
 

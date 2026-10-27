@@ -70,6 +70,12 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(self.store.observe("one"), Snapshot(2, 10, 2, 2))
         self.assertEqual(self.store.observe("two"), Snapshot(1, 20, 1, 1))
 
+    def test_identity_is_global_across_streams(self):
+        self.apply(Event("same_id", "one", 1, 10))
+        self.assertEqual(self.apply(Event("same_id", "two", 2, 20)), "conflict")
+        self.assertEqual(self.store.observe("one"), Snapshot(1, 10, 1, 1))
+        self.assertEqual(self.store.observe("two"), Snapshot())
+
     def test_maximum_profile_version_remains_observable(self):
         self.apply(Event("max", "s", 2 ** 31 - 1, 10))
         self.assertEqual(self.store.observe("s").version, 2 ** 31 - 1)

@@ -10,7 +10,7 @@ from .core import Delivery, EvidenceError, Event, Reply, Snapshot, deliver
 
 
 class Target(Protocol):
-    def send(self, event: Event, *, fault=None, tamper=False, age=0) -> Reply: ...
+    def send(self, event: Event, *, fault=None, tamper=False, age=0, timeout=None) -> Reply: ...
     def send_raw(self, body: bytes) -> Reply: ...
     def observe(self, stream: str) -> Snapshot: ...
     def restart(self, *, after_crash=False) -> bool: ...
@@ -140,6 +140,16 @@ def id_conflict(c):
     c.expect("id_conflict", 1, 10, 1, 1)
 
 
+def global_id_conflict(c):
+    original = Event("global_identity", "global_source", 1, 10)
+    c.accepted(original)
+    c.restart()
+    changed = Event("global_identity", "global_other", 2, 20)
+    require(c.send(changed).status == 409, "event identity was scoped to one stream")
+    c.expect("global_source", 1, 10, 1, 1)
+    c.expect("global_other")
+
+
 def version_conflict(c):
     c.accepted(event("version_conflict", id="version_a"))
     require(c.send(event("version_conflict", 1, 20, id="version_b")).status == 409,
@@ -238,7 +248,7 @@ def newer_same_value(c):
 
 SCENARIOS = (
     valid, duplicate, concurrent_duplicate, lost_ack_restart, retry_503, retry_429,
-    out_of_order, id_conflict, version_conflict, invalid_signature, expired_signature,
+    out_of_order, id_conflict, global_id_conflict, version_conflict, invalid_signature, expired_signature,
     known_id_invalid_signature, malformed, durable_applied_id, durable_stale_id,
     durable_redundant_id, rollback_receipt, rollback_state, concurrent_versions,
     same_version_race, newer_same_value,

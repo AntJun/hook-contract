@@ -9,7 +9,7 @@ healthy = json.loads((folder / "healthy" / "report.json").read_text(encoding="ut
 naive = json.loads((folder / "naive" / "report.json").read_text(encoding="utf-8"))
 expected = {"duplicate", "concurrent_duplicate", "lost_ack_restart", "out_of_order"}
 found = {row["id"] for row in naive["results"] if row["status"] == "fail"}
-if healthy["exit_code"] != 0 or healthy["summary"]["pass"] != 21:
+if healthy["exit_code"] != 0 or healthy["summary"]["pass"] != 22:
     raise SystemExit("Transactional positive control failed.")
 if naive["exit_code"] != 1 or naive["summary"]["error"] or not expected <= found:
     raise SystemExit("Seeded-defect negative control failed.")

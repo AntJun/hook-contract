@@ -5,7 +5,7 @@
 **Webhook consumer conformance tests with fault injection and durable-state evidence.**
 
 HookContract sends actual loopback HTTP requests and checks committed state under
-21 named scenarios: duplicate and concurrent delivery, bounded retries, reordered
+22 named scenarios: duplicate and concurrent delivery, bounded retries, reordered
 snapshots, conflicting identities, invalid signatures, rollback boundaries, and
 a post-commit process failure followed by restart.
 
@@ -35,7 +35,7 @@ hookcontract demo --output artifacts/demo
 
 This starts isolated receiver processes, exercises real HTTP and SQLite transactions,
 verifies positive and negative controls, and writes self-contained HTML, JSON, and JUnit.
-The positive control must pass all 21 scenarios. The negative control must produce
+The positive control must pass all 22 scenarios. The negative control must produce
 named contract violations, with complete evidence.
 
 The demo command returns zero when both controls match their expected outcomes.
@@ -50,7 +50,7 @@ hookcontract check --adapter examples.adapter:target --output artifacts/check
 
 The runnable example uses the reference receiver. An application adapter exposes:
 
-- send(event, fault=None, tamper=False, age=0): one delivery attempt with typed HTTP evidence.
+- send(event, fault=None, tamper=False, age=0, timeout=None): one delivery attempt honoring the remaining deadline, with typed HTTP evidence.
 - send_raw(body): one authenticated raw-body attempt for malformed-message checks.
 - observe(stream): an independent, settled Snapshot of version, value, effects, and receipts.
 - restart(after_crash=False): confirmed restart from durable storage.

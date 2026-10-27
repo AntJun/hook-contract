@@ -145,6 +145,34 @@ class SenderTests(unittest.TestCase):
             deliver(Client(), Event("e", "s", 1, 1),
                     policy=RetryPolicy(base_delay=0.1, max_total_delay=0.05), sleep=lambda _: None)
 
+    def test_backoff_cannot_issue_a_request_after_deadline(self):
+        clock, calls = [0.0], []
+        class Client:
+            def send(self, event, **kwargs):
+                calls.append(kwargs["timeout"])
+                return Reply(503)
+        def oversleep(delay):
+            clock[0] += delay + 0.1
+        with self.assertRaises(EvidenceError):
+            deliver(Client(), Event("e", "s", 1, 1),
+                    policy=RetryPolicy(max_elapsed=0.05), sleep=oversleep,
+                    monotonic=lambda: clock[0])
+        self.assertEqual(len(calls), 1)
+        self.assertLessEqual(calls[0], 0.05)
+
+    def test_delay_larger_than_remaining_deadline_is_not_slept(self):
+        calls, sleeps = [], []
+        class Client:
+            def send(self, *_args, **kwargs):
+                calls.append(kwargs["timeout"])
+                return Reply(503)
+        with self.assertRaises(EvidenceError):
+            deliver(Client(), Event("e", "s", 1, 1),
+                    policy=RetryPolicy(base_delay=0.1, max_elapsed=0.05),
+                    sleep=sleeps.append, monotonic=lambda: 0)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(sleeps, [])
+
     def test_reply_evidence_rejects_untrusted_types(self):
         for kwargs in ({"status": True}, {"status": "private"}, {"status": 700},
                        {"status": 200, "elapsed_ms": math.nan}):

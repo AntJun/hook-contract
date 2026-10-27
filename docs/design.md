@@ -11,7 +11,7 @@ Scenario runner -> bounded sender -> literal loopback HTTP -> receiver
 core.py owns canonical fixtures, authentication, typed evidence, and sender policy.
 store.py owns accepted IDs, versioned state, and effect writes.
 reference.py owns isolated receiver processes and named failpoints.
-suite.py defines the reusable Target protocol and 21 scenarios.
+suite.py defines the reusable Target protocol and 22 scenarios.
 report.py renders approved evidence fields without raw request data.
 
 ## Transaction boundary
