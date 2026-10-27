@@ -3,6 +3,7 @@ import io
 import json
 import threading
 import unittest
+from dataclasses import dataclass
 import xml.etree.ElementTree as ET
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -10,7 +11,7 @@ from hookcontract.__main__ import load_factory, main
 from hookcontract.core import Event, EvidenceError, HTTPClient, Reply, Snapshot, deliver
 from hookcontract.reference import ManagedTarget
 from hookcontract.report import render_html, render_junit
-from hookcontract.suite import run_suite
+from hookcontract.suite import Case, Violation, run_suite, same_version_race
 
 KEY = bytes(range(32))
 
@@ -61,6 +62,40 @@ class IntegrationTests(unittest.TestCase):
             def restart(self, **_kwargs):
                 return True
         self.assertEqual(run_suite(Missing())["exit_code"], 2)
+
+    def test_adapter_snapshot_extensions_are_excluded(self):
+        @dataclass(frozen=True)
+        class Extended(Snapshot):
+            internal_url: str = "private-extension-" + "sentinel"
+        class Target:
+            def observe(self, _):
+                return Extended(1, 10, 1, 1)
+        case = Case(Target())
+        case.expect("s", 1, 10, 1, 1)
+        text = json.dumps(case.observations)
+        self.assertNotIn("internal_url", text)
+        self.assertNotIn("private-extension", text)
+
+    def test_adapter_cannot_bypass_base_snapshot_validation(self):
+        class Invalid(Snapshot):
+            def __post_init__(self):
+                pass
+        class Target:
+            def observe(self, _):
+                return Invalid(value="private-value")
+        case = Case(Target())
+        with self.assertRaises(EvidenceError):
+            case.observe("s")
+        self.assertEqual(case.observations, [])
+
+    def test_race_observation_must_match_acknowledged_winner(self):
+        class Misrouted:
+            def send(self, event, **_):
+                return Reply(200 if event.id == "collision_a" else 409)
+            def observe(self, _):
+                return Snapshot(1, 20, 1, 1)
+        with self.assertRaises(Violation):
+            same_version_race(Case(Misrouted()))
 
     def test_redirect_is_returned_without_following_location(self):
         class Handler(BaseHTTPRequestHandler):

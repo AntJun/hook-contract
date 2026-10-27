@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
 from typing import Protocol
 
 from .core import Delivery, EvidenceError, Event, Reply, Snapshot, deliver
@@ -32,6 +31,7 @@ class Case:
     def record(self, reply):
         if not isinstance(reply, Reply):
             raise EvidenceError("delivery adapter supplied no typed HTTP evidence")
+        reply = Reply(reply.status, reply.elapsed_ms, reply.retry_after)
         with self.lock:
             self.requests.append({"status": reply.status,
                                   "outcome": "response" if reply.status else "transport_ambiguous",
@@ -53,15 +53,21 @@ class Case:
 
     def observe(self, stream):
         value = self.target.observe(stream)
-        if not isinstance(value, Snapshot) or not value.settled:
+        if not isinstance(value, Snapshot):
+            raise EvidenceError("durable observer supplied no typed state")
+        # Adapter extensions cannot add private fields to public observations.
+        approved = Snapshot(value.version, value.value, value.effects, value.receipts, value.settled)
+        if not approved.settled:
             raise EvidenceError("durable observer has not confirmed settled state")
-        return value
+        return approved
 
     def expect(self, stream, version=0, value=0, effects=0, receipts=0):
         actual = self.observe(stream)
         allowed = effects if isinstance(effects, tuple) else (effects,)
         expected = {"version": version, "value": value, "effects": list(allowed), "receipts": receipts}
-        self.observations.append({"expected": expected, "observed": asdict(actual)})
+        observed = {name: getattr(actual, name)
+                    for name in ("version", "value", "effects", "receipts", "settled")}
+        self.observations.append({"expected": expected, "observed": observed})
         require(actual.version == version and actual.value == value
                 and actual.effects in allowed and actual.receipts == receipts,
                 "committed state differs from the contract")
@@ -220,9 +226,8 @@ def same_version_race(c):
     with ThreadPoolExecutor(max_workers=2) as pool:
         replies = list(pool.map(c.send, values))
     require(sorted(r.status or 0 for r in replies) == [200, 409], "version race has no unique winner")
-    actual = c.observe("collision_race")
-    require(actual.value in (10, 20), "version race has an invalid value")
-    c.expect("collision_race", 1, actual.value, 1, 1)
+    winner = next(event for event, reply in zip(values, replies) if reply.status == 200)
+    c.expect("collision_race", 1, winner.value, 1, 1)
 
 
 def newer_same_value(c):
