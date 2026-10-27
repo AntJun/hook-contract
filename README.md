@@ -11,7 +11,8 @@ a post-commit process failure followed by restart.
 
 [Live reports](https://antjun.github.io/hook-contract/) |
 [Contract profile](docs/profile.md) |
-[Architecture](docs/design.md)
+[Architecture](docs/design.md) |
+[FastAPI integration](docs/fastapi.md)
 
 Python 3.11+. Zero runtime dependencies. Maintained by [AntJun](https://github.com/AntJun).
 
@@ -45,10 +46,15 @@ A startup error or incomplete negative-control observation fails the demo.
 ## Check an adapter
 
 ~~~sh
-hookcontract check --adapter examples.adapter:target --output artifacts/check
+python -m hookcontract check --adapter examples.adapter:target --output artifacts/check
 ~~~
 
-The runnable example uses the reference receiver. An application adapter exposes:
+From a repository checkout, this example uses the reference receiver.
+The [FastAPI example](docs/fastapi.md) exercises a separate ASGI service and SQL
+implementation through the same protocol, with an independent read-only observer.
+Its framework dependencies are optional and tested in dedicated CI jobs.
+
+An application adapter exposes:
 
 - send(event, fault=None, tamper=False, age=0, timeout=None): one delivery attempt honoring the remaining deadline, with typed HTTP evidence.
 - send_raw(body): one authenticated raw-body attempt for malformed-message checks.

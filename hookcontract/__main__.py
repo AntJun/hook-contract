@@ -77,7 +77,9 @@ reordered versions, invalid signatures, rollback boundaries, and a real post-com
 <div class="grid"><article><h2>Transactional receiver</h2><p>Accepted receipts and state transitions commit atomically.
 The suite checks the resulting database state.</p><a href="healthy/index.html">Inspect the passing control</a></article>
 <article><h2>Seeded defects</h2><p>A deliberately naive receiver reapplies duplicate and stale snapshots.
-The same suite must detect the named violations.</p><a href="naive/index.html">Inspect detected violations</a></article></div>
+The same suite must detect the named violations.</p><a href="naive/index.html">Inspect detected violations</a></article>
+<article><h2>Framework integration</h2><p>A separate FastAPI service uses its own SQL transactions and an independent observer.</p>
+<a href="https://github.com/AntJun/hook-contract/blob/main/docs/fastapi.md">Inspect the FastAPI integration</a></article></div>
 <h2>One command, inspectable evidence</h2><pre>python -m hookcontract demo --output artifacts/demo</pre>
 <p>Run your adapter with <code>hookcontract check --adapter your_module:factory</code>.
 The fixture profile and adapter capabilities are explicit.</p>
